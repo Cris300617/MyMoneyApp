@@ -7,40 +7,39 @@ export default function Informes(){
   const [gastos, setGastos] = useState([]);
   const [totalMes, setTotalMes] = useState(0);
 
-  const obtenerDatos = async () => {
-    const { data, error } = await supabase
-      .from('gastos')
-      .select('*')
-      .order('created_at', { ascending: false });
+const obtenerDatos = async () => {
+  const { data, error } = await supabase
+    .from('gastos')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      console.log('ERROR:', error);
-      return;
-    }
-
-    setGastos(data);
-
-    // 🔥 calcular total del mes (gastos - ingresos)
-    const ahora = new Date();
-
-    const gastosMes = data.filter((item) => {
-      const fecha = new Date(item.created_at);
-
-      return (
-        fecha.getMonth() === ahora.getMonth() &&
-        fecha.getFullYear() === ahora.getFullYear()
-      );
-    });
-
-    const total = gastosMes.reduce((acc, item) => {
-  if (!item.tipo_gasto.includes('Ingreso')) {
-    return acc + item.monto;
+  if (error) {
+    console.log('ERROR:', error);
+    return;
   }
-  return acc;
-}, 0);
 
-setTotalMes(total);
-  };
+  const ahora = new Date();
+
+  const gastosMes = data.filter((item) => {
+    const fecha = new Date(item.created_at);
+
+    return (
+      fecha.getMonth() === ahora.getMonth() &&
+      fecha.getFullYear() === ahora.getFullYear()
+    );
+  });
+
+  setGastos(gastosMes);
+
+  const total = gastosMes.reduce((acc, item) => {
+    if (!item.tipo_gasto.includes('Ingreso')) {
+      return acc + item.monto;
+    }
+    return acc;
+  }, 0);
+
+  setTotalMes(total);
+};
 
   useEffect(() => {
     obtenerDatos();
