@@ -19,12 +19,14 @@ import { supabase } from '../lib/supabase';
 export default function Registrar() {
 
   const [sueldo, setSueldo] = useState(0);
+  const [descripcion, setDescripcion] = useState('');
 
   const tipoGasto = [
-    'Regalos 🎁','Gaspi 🐶','Copete 🍻','Comida 🍝',
-    'Casa 🏡','Hormiga 🤡','Marakas 🤑','Ahorros 🚗'
+    'Regalos 🎁','Gaspy 🐶','Copete 🍻','Comida 🍝',
+    'Casa 🏡','Hormiga 🤡','Ahorros 🚗'
   ];
 
+ 
   const [selected, setSelected] = useState(null);
   const [monto, setMonto] = useState('');
   const [montoExtra, setMontoExtra] = useState('');
@@ -64,7 +66,8 @@ export default function Registrar() {
       {
         tipo_gasto: selected,
         monto: montoNumero,
-        sueldo_actualizado: nuevoSueldo
+        sueldo_actualizado: nuevoSueldo,
+        descripcion: descripcion || ''
       }
     ]);
 
@@ -77,6 +80,7 @@ export default function Registrar() {
     setSueldo(nuevoSueldo);
     setMonto('');
     setSelected(null);
+    setDescripcion('');
   };
 
   const handleSumarDinero = async () => {
@@ -185,6 +189,20 @@ export default function Registrar() {
                 keyboardType="numeric"
                 value={monto}
                 onChangeText={setMonto}
+              />
+            </View>
+
+            <Text style={styles.label}>
+              Descripción (opcional)
+            </Text>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="create-outline" size={20} color="#6366f1" />
+              <TextInput
+                style={styles.input}
+                placeholder="Ej: Salida con amigos"
+                value={descripcion}
+                onChangeText={setDescripcion}
               />
             </View>
 

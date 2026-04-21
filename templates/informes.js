@@ -1,49 +1,77 @@
-import { StyleSheet, Text, View, FlatList } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  TouchableOpacity,
+  Modal
+} from 'react-native';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Informes(){
 
   const [gastos, setGastos] = useState([]);
+  const [gastosMes, setGastosMes] = useState([]);
   const [totalMes, setTotalMes] = useState(0);
+  const [filtro, setFiltro] = useState('Todos');
+  const [modalVisible, setModalVisible] = useState(false);
 
-const obtenerDatos = async () => {
-  const { data, error } = await supabase
-    .from('gastos')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const tipoGasto = [
+    'Todos',
+    'Regalos 🎁','Gaspy 🐶','Copete 🍻','Comida 🍝',
+    'Casa 🏡','Hormiga 🤡','Ahorros 🚗','Ingreso 💰'
+  ];
 
-  if (error) {
-    console.log('ERROR:', error);
-    return;
-  }
+  const obtenerDatos = async () => {
+    const { data, error } = await supabase
+      .from('gastos')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  const ahora = new Date();
-
-  const gastosMes = data.filter((item) => {
-    const fecha = new Date(item.created_at);
-
-    return (
-      fecha.getMonth() === ahora.getMonth() &&
-      fecha.getFullYear() === ahora.getFullYear()
-    );
-  });
-
-  setGastos(gastosMes);
-
-  const total = gastosMes.reduce((acc, item) => {
-    if (!item.tipo_gasto.includes('Ingreso')) {
-      return acc + item.monto;
+    if (error) {
+      console.log('ERROR:', error);
+      return;
     }
-    return acc;
-  }, 0);
 
-  setTotalMes(total);
-};
+    const ahora = new Date();
+
+    const filtradosMes = data.filter((item) => {
+      const fecha = new Date(item.created_at);
+      return (
+        fecha.getMonth() === ahora.getMonth() &&
+        fecha.getFullYear() === ahora.getFullYear()
+      );
+    });
+
+    setGastosMes(filtradosMes);
+    setGastos(filtradosMes);
+
+    const total = filtradosMes.reduce((acc, item) => {
+      if (!item.tipo_gasto.includes('Ingreso')) {
+        return acc + item.monto;
+      }
+      return acc;
+    }, 0);
+
+    setTotalMes(total);
+  };
 
   useEffect(() => {
     obtenerDatos();
   }, []);
+
+  useEffect(() => {
+    if (filtro === 'Todos') {
+      setGastos(gastosMes);
+    } else {
+      const filtrados = gastosMes.filter(
+        (item) => item.tipo_gasto === filtro
+      );
+      setGastos(filtrados);
+    }
+  }, [filtro, gastosMes]);
 
   return(
     <View style={styles.container}>
@@ -57,6 +85,44 @@ const obtenerDatos = async () => {
         </Text>
       </View>
 
+      {/* 👇 BOTÓN DROPDOWN */}
+      <TouchableOpacity
+        style={styles.dropdown}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={styles.dropdownText}>
+          Filtro: {filtro}
+        </Text>
+        <Ionicons name="chevron-down" size={18} color="#6b7280" />
+      </TouchableOpacity>
+
+      {/* 👇 MODAL */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            {tipoGasto.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.modalItem}
+                onPress={() => {
+                  setFiltro(item);
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={styles.modalText}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <FlatList
         data={gastos}
         keyExtractor={(item) => item.id.toString()}
@@ -67,27 +133,29 @@ const obtenerDatos = async () => {
           return (
             <View style={styles.card}>
 
-              <Text
-                style={[
-                  styles.tipo,
-                  esIngreso && styles.ingreso
-                ]}
-              >
+              <Text style={[
+                styles.tipo,
+                esIngreso && styles.ingreso
+              ]}>
                 {item.tipo_gasto}
               </Text>
 
-              <Text
-                style={[
-                  styles.monto,
-                  esIngreso 
-                ]}
-              >
+              <Text style={[
+                styles.monto,
+                esIngreso && styles.ingreso
+              ]}>
                 ${item.monto.toLocaleString('es-CL')}
               </Text>
 
               <Text style={styles.sueldo}>
                 Restante: ${item.sueldo_actualizado.toLocaleString('es-CL')}
               </Text>
+
+              {item.descripcion && item.descripcion.trim() !== '' && (
+                <Text style={styles.descripcion}>
+                  📝 {item.descripcion}
+                </Text>
+              )}
 
               <Text style={styles.fecha}>
                 📅 {fecha.toLocaleDateString('es-CL', {
@@ -132,10 +200,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
 
@@ -151,15 +215,50 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
+  dropdown: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+
+  dropdownText: {
+    color: '#374151',
+    fontWeight: '500',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    padding: 40,
+  },
+
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 10,
+  },
+
+  modalItem: {
+    padding: 12,
+  },
+
+  modalText: {
+    fontSize: 16,
+    color: '#1f1f1f',
+  },
+
   card: {
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 15,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
 
@@ -170,7 +269,7 @@ const styles = StyleSheet.create({
   },
 
   ingreso: {
-    color: '#22c55e', 
+    color: '#22c55e',
   },
 
   monto: {
@@ -185,8 +284,14 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 
+  descripcion: {
+    marginTop: 6,
+    fontSize: 14,
+    color: '#374151',
+    fontStyle: 'italic',
+  },
+
   fecha: {
-    marginBottom: 6,
     marginTop: 8,
     fontSize: 13,
     color: '#6b7280',
